@@ -6,6 +6,12 @@ project.
 The goal is the same game on a modern engine. Freelancer's simplicity is part of its appeal, so the
 toolkit keeps the game as it is and does not redesign it.
 
+## Screenshots
+
+![The Freelancer main menu, converted and running in the Unreal Engine 5 editor](docs/screenshots/main-menu.webp)
+
+*The main menu, converted from the game's own files and running in the Unreal Engine 5 editor.*
+
 ## How it works
 
 1. The converters turn the game's models, textures, sounds, star systems and cutscenes into Unreal assets.
