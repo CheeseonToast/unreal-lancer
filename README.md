@@ -6,8 +6,6 @@ project.
 The goal is the same game on a modern engine. Freelancer's simplicity is part of its appeal, so the
 toolkit keeps the game as it is and does not redesign it.
 
-## Screenshots
-
 ![The Freelancer main menu, converted and running in the Unreal Engine 5 editor](docs/screenshots/main-menu.webp)
 
 ## How it works
