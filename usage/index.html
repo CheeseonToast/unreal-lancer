@@ -1,0 +1,323 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Unreal Lancer usage</title>
+<style>
+  :root {
+    --bg: #faf9f5; --panel: #ffffff; --fg: #1f1e1b; --muted: #6b6a64; --line: #e6e3da;
+    --grid: #ecebe5; --tip: #ffffff;
+    --c0: #c96442; --c1: #4a7fb5; --c2: #6a9a5b; --c3: #b58a3a; --c4: #8a6bb5; --c5: #4aa3a3; --c6: #a3a39b;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1c1b19; --panel: #262522; --fg: #f0eee6; --muted: #a8a69e; --line: #3a3934;
+      --grid: #32312d; --tip: #2e2d29;
+      --c0: #e08a6a; --c1: #7aa7d6; --c2: #8fbf7f; --c3: #d4ad5f; --c4: #ad92d6; --c5: #6cc4c4; --c6: #8a8981;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--fg); font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  .wrap { max-width: 1200px; margin: 0 auto; padding: 32px 16px 48px; display: grid; gap: 20px; }
+  h1 { font-family: Georgia, "Times New Roman", serif; font-weight: 400; font-size: 2rem; margin: 0; }
+  .lede { margin: 6px 0 0; color: var(--muted); max-width: 72ch; }
+  .lede b { color: var(--fg); font-weight: 600; }
+  .tiles { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 10.5rem), 1fr)); }
+  .tile, .card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 16px; min-width: 0; }
+  .tile span { display: block; font-size: .8rem; color: var(--muted); }
+  .tile b { display: block; font-family: Georgia, serif; font-weight: 400; font-size: 1.6rem; font-variant-numeric: tabular-nums; margin-top: 4px; }
+  .grid2 { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 24rem), 1fr)); }
+  .card h2 { font-size: 1.05rem; font-weight: 600; margin: 0; }
+  .card > p { margin: 4px 0 12px; color: var(--muted); font-size: .85rem; }
+  .legend { display: flex; flex-wrap: wrap; gap: 14px; font-size: .8rem; color: var(--muted); margin-bottom: 8px; }
+  .legend i { display: inline-block; width: .6rem; height: .6rem; border-radius: 2px; margin-right: .35rem; }
+  .chart { position: relative; min-height: 260px; }
+  .chart svg { display: block; width: 100%; height: auto; }
+  .chart text { fill: var(--muted); font-size: 11px; }
+  .tip { position: absolute; pointer-events: none; background: var(--tip); border: 1px solid var(--line); border-radius: 8px; box-shadow: 0 4px 14px rgba(0,0,0,.12); padding: 6px 10px; font-size: .8rem; white-space: nowrap; z-index: 2; }
+  .tip div:first-child { color: var(--muted); }
+  .scroll { overflow: auto; max-height: 30rem; }
+  table { width: 100%; border-collapse: collapse; font-size: .82rem; font-variant-numeric: tabular-nums; }
+  th, td { text-align: right; padding: 6px 8px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+  th:first-child, td:first-child, .l { text-align: left; }
+  td.title { white-space: normal; min-width: 16rem; }
+  th { position: sticky; top: 0; background: var(--panel); font-weight: 500; color: var(--muted); }
+  .note { color: var(--muted); font-size: .8rem; max-width: 85ch; }
+  .note p { margin: 0 0 6px; }
+  .err { color: #b3261e; }
+</style>
+</head>
+<body>
+<main class="wrap">
+  <header>
+    <h1>Unreal Lancer usage</h1>
+    <p class="lede" id="lede">Loading…</p>
+  </header>
+
+  <section class="tiles" aria-label="Totals">
+    <div class="tile"><span>API-equivalent cost</span><b id="t-cost">—</b></div>
+    <div class="tile"><span>Tokens (all kinds)</span><b id="t-tokens">—</b></div>
+    <div class="tile"><span>Output tokens</span><b id="t-output">—</b></div>
+    <div class="tile"><span>Model requests</span><b id="t-requests">—</b></div>
+    <div class="tile"><span>Sessions</span><b id="t-sessions">—</b></div>
+    <div class="tile"><span>Cost per active day</span><b id="t-daily">—</b></div>
+  </section>
+
+  <section class="card" id="cost-by-day">
+    <h2>Cost per day</h2>
+    <p>API-equivalent cost of each day, split by model.</p>
+    <div class="legend" id="legend"></div>
+    <div class="chart" id="daychart"></div>
+  </section>
+
+  <div class="grid2">
+    <section class="card" id="by-computer">
+      <h2>Cost by computer</h2>
+      <p>Both computers that run Claude Code on the project.</p>
+      <div class="scroll"><table>
+        <thead><tr><th>Computer</th><th class="l">First day</th><th class="l">Last day</th><th>Requests</th><th>Tokens</th><th>Cost</th></tr></thead>
+        <tbody id="computertable"></tbody>
+      </table></div>
+    </section>
+    <section class="card" id="by-part">
+      <h2>Where the cost comes from</h2>
+      <p>Cost by token kind, for main sessions and sub-agents.</p>
+      <div class="scroll"><table>
+        <thead><tr><th>Source</th><th>Input</th><th>Cache write</th><th>Cache read</th><th>Output</th><th>Total</th></tr></thead>
+        <tbody id="sourcetable"></tbody>
+      </table></div>
+    </section>
+  </div>
+
+  <section class="card" id="by-model">
+    <h2>Cost by model</h2>
+    <p>Cache reads are cheap, cache writes and output are not.</p>
+    <div class="scroll"><table>
+      <thead><tr><th>Model</th><th>Requests</th><th>Input</th><th>Cache write</th><th>Cache read</th><th>Output</th><th>Cost</th></tr></thead>
+      <tbody id="modeltable"></tbody>
+    </table></div>
+  </section>
+
+  <section class="card" id="sessions">
+    <h2>Sessions, most expensive first</h2>
+    <p>Each Claude Code session on the project, with its sub-agents.</p>
+    <div class="scroll"><table>
+      <thead><tr><th class="l">Session</th><th class="l">Computer</th><th class="l">Started</th><th>Requests</th><th>Tokens</th><th>Main</th><th>Sub-agents</th><th>Total</th></tr></thead>
+      <tbody id="sessiontable"></tbody>
+    </table></div>
+  </section>
+
+  <section class="card" id="prices">
+    <h2>Prices used</h2>
+    <p>US dollars per million tokens, Anthropic API list prices.</p>
+    <div class="scroll"><table>
+      <thead><tr><th>Model</th><th>Input</th><th>Cache write 5 min</th><th>Cache write 1 h</th><th>Cache read</th><th>Output</th></tr></thead>
+      <tbody id="pricetable"></tbody>
+    </table></div>
+  </section>
+
+  <footer class="note">
+    <p>"Cost" is what the same tokens would cost on the Anthropic API at list prices. The work runs on a flat monthly Claude plan, so this is not a bill. A model with no listed price counts as $0.</p>
+    <p>Counted from the Claude Code transcripts of the two computers that work on Unreal Lancer. <span id="updated"></span></p>
+  </footer>
+</main>
+
+<script>
+(function () {
+  const $ = (id) => document.getElementById(id);
+  const usd = new Intl.NumberFormat('en-US', {style: 'currency', currency: 'USD', maximumFractionDigits: 0});
+  const usd2 = new Intl.NumberFormat('en-US', {style: 'currency', currency: 'USD', minimumFractionDigits: 2, maximumFractionDigits: 2});
+  const usd3 = new Intl.NumberFormat('en-US', {style: 'currency', currency: 'USD', minimumFractionDigits: 3, maximumFractionDigits: 3});
+  const compact = new Intl.NumberFormat('en', {notation: 'compact', maximumFractionDigits: 1});
+  const int = new Intl.NumberFormat('en-US');
+  const pct = new Intl.NumberFormat('en-US', {style: 'percent', maximumFractionDigits: 0});
+  const sum = (a, f) => a.reduce((s, r) => s + f(r), 0);
+  const groupBy = (a, k) => { const m = new Map(); for (const r of a) { const v = k(r); if (!m.has(v)) m.set(v, []); m.get(v).push(r); } return m; };
+  const dayLabel = (s) => { const [y, m, d] = s.split('-').map(Number); return new Date(Date.UTC(y, m - 1, d)).toLocaleDateString('en-GB', {day: 'numeric', month: 'short', timeZone: 'UTC'}); };
+  const fullDay = (s) => { const [y, m, d] = s.split('-').map(Number); return new Date(Date.UTC(y, m - 1, d)).toLocaleDateString('en-GB', {day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC'}); };
+  const startLabel = (s) => { const m = /^(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2})/.exec(s); return m ? dayLabel(`${m[1]}-${m[2]}-${m[3]}`) + ' ' + m[4] + ':' + m[5] : s; };
+  const COLORS = ['--c0', '--c1', '--c2', '--c3', '--c4', '--c5', '--c6'].map((v) => `var(${v})`);
+
+  function fillTable(id, rows, cols) {
+    const tb = $(id);
+    tb.replaceChildren(...rows.map((r) => {
+      const tr = document.createElement('tr');
+      for (const [field, fmt, cls] of cols) {
+        const td = document.createElement('td');
+        if (cls) td.className = cls;
+        td.textContent = fmt ? fmt(r[field]) : r[field];
+        tr.append(td);
+      }
+      return tr;
+    }));
+  }
+
+  function render(data) {
+    const byId = new Map(data.prices.map((p) => [p.model_id, p]));
+    const price = (r) => byId.get(r.model) || {input: 0, output: 0, cache_write_5m: 0, cache_write_1h: 0, cache_read: 0, model: r.model};
+    const cost = (r) => {
+      const p = price(r);
+      return {
+        input: r.input_tokens * p.input / 1e6,
+        output: r.output_tokens * p.output / 1e6,
+        write: (r.cache_write_5m_tokens * p.cache_write_5m + r.cache_write_1h_tokens * p.cache_write_1h) / 1e6,
+        read: r.cache_read_tokens * p.cache_read / 1e6,
+      };
+    };
+    const tokens = (r) => r.input_tokens + r.output_tokens + r.cache_write_5m_tokens + r.cache_write_1h_tokens + r.cache_read_tokens;
+
+    const daily = data.daily.map((r) => {
+      const c = cost(r);
+      return {...r, name: price(r).model || r.model, tokens: tokens(r), c, cost: c.input + c.output + c.write + c.read};
+    });
+
+    // sessions
+    const sess = Array.from(groupBy(data.sessions, (r) => r.session), ([session, v]) => {
+      const tot = (f) => sum(v, f);
+      const rc = (r) => { const c = cost(r); return c.input + c.output + c.write + c.read; };
+      return {
+        session, title: v[0].title, computer: v[0].computer,
+        started: v.map((r) => r.started).sort()[0],
+        requests: tot((r) => r.requests), tokens: tot(tokens),
+        main: sum(v.filter((r) => r.source === 'Main'), rc),
+        sub: sum(v.filter((r) => r.source !== 'Main'), rc),
+        cost: tot(rc),
+      };
+    }).sort((a, b) => b.cost - a.cost);
+
+    // totals
+    const total = sum(daily, (r) => r.cost);
+    const days = new Set(daily.map((r) => r.date)).size;
+    const byModel = Array.from(groupBy(daily, (r) => r.name), ([model, v]) => ({
+      model, requests: sum(v, (r) => r.requests), input: sum(v, (r) => r.input_tokens),
+      write: sum(v, (r) => r.cache_write_5m_tokens + r.cache_write_1h_tokens), read: sum(v, (r) => r.cache_read_tokens),
+      output: sum(v, (r) => r.output_tokens), cost: sum(v, (r) => r.cost),
+    })).sort((a, b) => b.cost - a.cost);
+    const subCost = sum(daily.filter((r) => r.source !== 'Main'), (r) => r.cost);
+
+    $('t-cost').textContent = usd.format(total);
+    $('t-tokens').textContent = compact.format(sum(daily, (r) => r.tokens));
+    $('t-output').textContent = compact.format(sum(daily, (r) => r.output_tokens));
+    $('t-requests').textContent = int.format(sum(daily, (r) => r.requests));
+    $('t-sessions').textContent = int.format(sess.length);
+    $('t-daily').textContent = usd.format(days ? total / days : 0);
+
+    const lede = $('lede');
+    lede.replaceChildren();
+    const b = (t) => { const e = document.createElement('b'); e.textContent = t; return e; };
+    const top = byModel[0];
+    lede.append('Unreal Lancer has used ', b(usd.format(total)), ' of API-equivalent cost over ', b(int.format(sess.length)), ' Claude Code sessions. ',
+      b(top ? top.model : '—'), ' is ', b(pct.format(total ? (top ? top.cost : 0) / total : 0)), ' of it, and sub-agents are ', b(pct.format(total ? subCost / total : 0)), '.');
+
+    // tables
+    fillTable('computertable', Array.from(groupBy(daily, (r) => r.computer), ([computer, v]) => {
+      const ds = v.map((r) => r.date).sort();
+      return {computer, first: fullDay(ds[0]), last: fullDay(ds[ds.length - 1]), requests: sum(v, (r) => r.requests), tokens: sum(v, (r) => r.tokens), cost: sum(v, (r) => r.cost)};
+    }).sort((a, b) => b.cost - a.cost), [['computer'], ['first', null, 'l'], ['last', null, 'l'], ['requests', int.format], ['tokens', compact.format], ['cost', usd2.format]]);
+
+    fillTable('sourcetable', Array.from(groupBy(daily, (r) => r.source), ([source, v]) => ({
+      source, input: sum(v, (r) => r.c.input), write: sum(v, (r) => r.c.write), read: sum(v, (r) => r.c.read), output: sum(v, (r) => r.c.output), cost: sum(v, (r) => r.cost),
+    })).sort((a, b) => b.cost - a.cost), [['source'], ['input', usd2.format], ['write', usd2.format], ['read', usd2.format], ['output', usd2.format], ['cost', usd2.format]]);
+
+    fillTable('modeltable', byModel, [['model'], ['requests', int.format], ['input', compact.format], ['write', compact.format], ['read', compact.format], ['output', compact.format], ['cost', usd2.format]]);
+
+    fillTable('sessiontable', sess, [['title', null, 'l title'], ['computer', null, 'l'], ['started', startLabel, 'l'], ['requests', int.format], ['tokens', compact.format], ['main', usd2.format], ['sub', usd2.format], ['cost', usd2.format]]);
+
+    fillTable('pricetable', data.prices, [['model'], ['input', usd3.format], ['cache_write_5m', usd3.format], ['cache_write_1h', usd3.format], ['cache_read', usd3.format], ['output', usd3.format]]);
+
+    if (data.generated_at) {
+      const t = new Date(data.generated_at);
+      $('updated').textContent = 'Figures copied ' + t.toLocaleString('en-GB', {day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London'}) + ' UK time.';
+    }
+
+    // chart
+    const keys = byModel.map((m) => m.model);
+    $('legend').replaceChildren(...keys.map((k, i) => {
+      const s = document.createElement('span'); const sw = document.createElement('i');
+      sw.style.background = COLORS[i % COLORS.length]; s.append(sw, k); return s;
+    }));
+    const dayList = Array.from(new Set(daily.map((r) => r.date))).sort();
+    const wide = dayList.map((date) => {
+      const o = {date};
+      for (const k of keys) o[k] = 0;
+      for (const r of daily) if (r.date === date) o[r.name] += r.cost;
+      o.total = keys.reduce((s, k) => s + o[k], 0);
+      return o;
+    });
+    const el = $('daychart');
+    const draw = () => drawChart(el, wide, keys);
+    draw();
+    let w = el.clientWidth;
+    new ResizeObserver(() => { if (el.clientWidth !== w) { w = el.clientWidth; draw(); } }).observe(el);
+  }
+
+  function niceMax(v) {
+    if (v <= 0) return 1;
+    const p = Math.pow(10, Math.floor(Math.log10(v)));
+    for (const m of [1, 2, 2.5, 5, 10]) if (m * p >= v) return m * p;
+    return 10 * p;
+  }
+
+  function drawChart(el, wide, keys) {
+    const NS = 'http://www.w3.org/2000/svg';
+    const mk = (tag, attrs) => { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); return e; };
+    el.replaceChildren();
+    if (!wide.length) return;
+    const W = Math.max(300, el.clientWidth || 800), H = 260, bottom = 24, top = 8;
+    const max = niceMax(Math.max(...wide.map((o) => o.total)));
+    const ticks = [0, .25, .5, .75, 1].map((f) => f * max);
+    const svg = mk('svg', {viewBox: `0 0 ${W} ${H}`, role: 'img', 'aria-label': 'Stacked bar chart of Unreal Lancer API-equivalent cost per day, split by model'});
+    el.append(svg);
+    // y labels to measure the left margin
+    const labels = ticks.map((t) => { const tx = mk('text', {'text-anchor': 'end', 'dominant-baseline': 'middle'}); tx.textContent = '$' + int.format(Math.round(t)); svg.append(tx); return tx; });
+    const left = Math.max(...labels.map((t) => t.getComputedTextLength())) + 10;
+    const y = (v) => H - bottom - (v / max) * (H - bottom - top);
+    ticks.forEach((t, i) => {
+      labels[i].setAttribute('x', left - 6); labels[i].setAttribute('y', y(t));
+      svg.insertBefore(mk('line', {x1: left, x2: W - 4, y1: y(t), y2: y(t), stroke: 'var(--grid)'}), svg.firstChild);
+    });
+    const band = (W - 4 - left) / wide.length;
+    const bw = Math.min(32, band * 0.75);
+    const step = Math.ceil(wide.length * 48 / Math.max(1, W - left));
+    const fmt = (s) => { const [yy, m, d] = s.split('-').map(Number); return new Date(Date.UTC(yy, m - 1, d)).toLocaleDateString('en-GB', {day: 'numeric', month: 'short', timeZone: 'UTC'}); };
+    wide.forEach((o, i) => {
+      const x = left + i * band + (band - bw) / 2;
+      let acc = 0;
+      keys.forEach((k, ki) => {
+        if (!o[k]) return;
+        const y0 = y(acc), y1 = y(acc + o[k]);
+        svg.append(mk('rect', {x, width: bw, y: y1, height: Math.max(0, y0 - y1), style: `fill:${COLORS[ki % COLORS.length]}`}));
+        acc += o[k];
+      });
+      if (i % step === 0) {
+        const tx = mk('text', {x: left + i * band + band / 2, y: H - 6, 'text-anchor': 'middle'});
+        tx.textContent = fmt(o.date); svg.append(tx);
+      }
+    });
+    svg.append(mk('line', {x1: left, x2: W - 4, y1: y(0), y2: y(0), stroke: 'var(--muted)'}));
+    const tip = document.createElement('div'); tip.className = 'tip'; tip.hidden = true; el.append(tip);
+    wide.forEach((o, i) => {
+      const hit = mk('rect', {x: left + i * band, width: band, y: 0, height: H - bottom, fill: 'transparent'});
+      hit.addEventListener('pointermove', (ev) => {
+        const lines = [fmt(o.date)].concat(keys.filter((k) => o[k] > 0).map((k) => `${k}: ${usd2.format(o[k])}`), [`Total: ${usd2.format(o.total)}`]);
+        tip.replaceChildren(...lines.map((t) => { const d = document.createElement('div'); d.textContent = t; return d; }));
+        tip.hidden = false;
+        const r = el.getBoundingClientRect();
+        const px = ev.clientX - r.left, py = ev.clientY - r.top;
+        tip.style.left = Math.max(0, Math.min(el.clientWidth - tip.offsetWidth, px + 12)) + 'px';
+        tip.style.top = Math.max(0, py - 20) + 'px';
+      });
+      hit.addEventListener('pointerleave', () => { tip.hidden = true; });
+      svg.append(hit);
+    });
+  }
+
+  fetch('usage.json', {cache: 'no-cache'})
+    .then((r) => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+    .then(render)
+    .catch((e) => { const l = $('lede'); l.className = 'lede err'; l.textContent = 'The usage figures could not be loaded (' + e.message + ').'; });
+})();
+</script>
+</body>
+</html>
